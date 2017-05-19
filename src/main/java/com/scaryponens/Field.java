@@ -2,9 +2,7 @@ package com.scaryponens;
 
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.function.*;
 import java.util.stream.Stream;
 
 /**
@@ -14,14 +12,17 @@ public class Field {
     private final int width;
     private final int height;
     private final char bot;
-    private final char[] field;
+    private final Character[] field;
 
-    public Field(int width, int height, char bot, char[] field) {
+    public Field(int width, int height, char bot, Character[] field) {
         this.width = width;
         this.height = height;
         this.bot = bot;
         this.field = field;
     }
+
+    public static Function<Long, Character[]> genStartingField = (n) ->
+            Stream.generate(() -> '.').limit(n).toArray(Character[]::new);
 
     public int getWidth() {
         return width;
@@ -35,23 +36,44 @@ public class Field {
         return bot;
     }
 
-    public char[] getField() {
+    public Character[] getField() {
         return field;
     }
 
-    public Function<Field, Stream<Move>> moveBot = field ->
+    public void showField() {
+        System.out.println(String.format("Light rider playing field for bot %s", bot));
+        int n = width*height;
+        for (int i = 0; i < n; i++) {
+            if (i > 0 && i % width == 0)
+                System.out.print("\n");
+            System.out.print(String.format("%s\t",field[i]));
+        }
+        System.out.println("\n");
+    }
+
+    public static Predicate<Supplier<Field>> onField = maybeF -> {
+        Field f;
+        try {
+            f = maybeF.get();
+        } catch (ArrayIndexOutOfBoundsException e) {
+            return false;
+        }
+        Optional<Integer> bot = getBot(f);
+        return
+                bot.isPresent() &&
+                        f.validPos.apply(bot.get()) &&
+                        f.getField()[bot.get()] != '*';
+    };
+
+    public Supplier<Character[]> cloneField = () ->
+        getField().clone();
+
+    public static Function<Field,Stream<Move>> moveBot = (field) ->
         Arrays.asList(Move.UP, Move.LEFT, Move.DOWN, Move.RIGHT).stream()
             .map(f -> f.apply(field)).filter(m -> onField.test(m.getField()));
 
-    public static Predicate<Field> onField = f -> {
-        Optional<Integer> bot = getBot(f);
-        int end = (f.width * f.height);
-        return
-            bot.isPresent() &&
-            0 <= bot.get() &&
-            bot.get() < end &&
-            f.getField()[bot.get()] != '*';
-    };
+    public Function<Integer,Boolean> validPos = pos ->
+            0 <= pos && pos < getWidth()*getHeight();
 
     public static Optional<Integer> getBot(Field f) {
         int i = 0;
@@ -63,7 +85,7 @@ public class Field {
         return Optional.empty();
     }
 
-    public static Field of(int w, int h, char bot, char[] field) {
+    public static Field of(int w, int h, char bot, Character[] field) {
         return new Field(w, h, bot, field);
     }
 
@@ -99,23 +121,35 @@ public class Field {
 }
 
 enum Direction {
-    UP, RIGHT, DOWN, LEFT;
+    UP, RIGHT, DOWN, LEFT, NONE;
 }
 
 class Move {
     private Direction direction;
-    private Field field;
+    private Supplier<Field> field;
 
     public Move(Direction d, Field f) {
         direction = d;
-        this.field = f;
+        this.field = () -> move.apply(f, direction);
+    }
+
+    public String showMove() {
+        return String.format(" [ %s ] ", direction.name());
+    }
+
+    public void printMove() {
+        System.out.print(this);
+    }
+
+    public String toString() {
+        return showMove();
     }
 
     public Direction getDirection() {
         return direction;
     }
 
-    public Field getField() {
+    public Supplier<Field> getField() {
         return field;
     }
 
@@ -142,20 +176,20 @@ class Move {
     public static final Function<Field, Move> UP = f ->
             new Move(
                     Direction.UP,
-                    Field.of(f.getWidth(), f.getHeight(), f.getBot(), move.apply(f,Direction.UP).getField()));
+                    Field.of(f.getWidth(), f.getHeight(), f.getBot(), f.cloneField.get()));
 
     public static final Function<Field, Move> LEFT = f ->
             new Move(
                     Direction.LEFT,
-                    Field.of(f.getWidth(), f.getHeight(), f.getBot(), move.apply(f,Direction.LEFT).getField()));
+                    Field.of(f.getWidth(), f.getHeight(), f.getBot(), f.cloneField.get()));
 
     public static final Function<Field, Move> DOWN = f ->
             new Move(
                     Direction.DOWN,
-                    Field.of(f.getWidth(), f.getHeight(), f.getBot(), move.apply(f,Direction.DOWN).getField()));
+                    Field.of(f.getWidth(), f.getHeight(), f.getBot(), f.cloneField.get()));
 
     public static final Function<Field, Move> RIGHT = f ->
             new Move(
                     Direction.RIGHT,
-                    Field.of(f.getWidth(), f.getHeight(), f.getBot(), move.apply(f,Direction.RIGHT).getField()));
+                    Field.of(f.getWidth(), f.getHeight(), f.getBot(), f.cloneField.get()));
 }
