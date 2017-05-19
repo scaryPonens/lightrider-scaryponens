@@ -47,7 +47,10 @@ public class Field {
         Optional<Integer> bot = getBot(f);
         int end = (f.width * f.height);
         return
-                bot.isPresent() && 0 <= bot.get() && bot.get() < end;
+            bot.isPresent() &&
+            0 <= bot.get() &&
+            bot.get() < end &&
+            f.getField()[bot.get()] != '*';
     };
 
     public static Optional<Integer> getBot(Field f) {
@@ -64,8 +67,8 @@ public class Field {
         return new Field(w, h, bot, field);
     }
 
-    public Function<Integer,Field> markX = (pos) -> {
-        this.getField()[pos] = 'x';
+    public Function<Integer,Field> markXorCrash = (pos) -> {
+        this.getField()[pos] = this.getField()[pos] == 'x' ? '*' : 'x';
         return this;
     };
 
@@ -118,7 +121,7 @@ class Move {
 
     public static BiFunction<Field,Direction,Field> move = (field,d) -> {
         int start = Field.getBot(field).orElseThrow(IllegalArgumentException::new);
-        field.markX.apply(start);
+        field.markXorCrash.apply(start);
         switch (d) {
             case UP:
                 field.markBot.apply(start - field.getWidth());
