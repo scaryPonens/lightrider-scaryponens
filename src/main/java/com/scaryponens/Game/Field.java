@@ -1,7 +1,5 @@
 package com.scaryponens.Game;
 
-import com.scaryponens.monads.Pair;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -14,17 +12,27 @@ import java.util.stream.Stream;
  * Created by Reuben on 5/19/2017.
  */
 public class Field {
-    private final int width;
-    private final int height;
+    private int width;
+    private int height;
     private char bot1;
     private char bot2;
-    private final Character[] field;
+    private Character[] field;
+
+    public Field() {}
 
     public Field(int width, int height, char bot1, char bot2, Character[] field) {
         this.width = width;
         this.height = height;
         this.bot1 = bot1;
         this.bot2 = bot2;
+        this.field = field;
+    }
+
+    public Field(int width, int height, char bot1, Character[] field) {
+        this.width = width;
+        this.height = height;
+        this.bot1 = bot1;
+        this.bot2 = otherBot.apply(bot1);
         this.field = field;
     }
 
@@ -90,6 +98,20 @@ public class Field {
                         .filter(field.validMove)
                         .map(Optional::get);
 
+    public String positionToCommand(int start, int end) {
+        int delta = start - end;
+        switch(delta) {
+            case -1:
+                return "left";
+            case 1:
+                return "right";
+            case -16:
+                return "up";
+            default:
+                return "down";
+        }
+    }
+
     public Function<Integer,Boolean> validPos = pos ->
             0 <= pos && pos < getWidth()*getHeight();
 
@@ -97,10 +119,10 @@ public class Field {
 
     public Supplier<Optional<Integer>> getBot2 = () -> getBot(this, this.bot2);
 
-    public Field takeRandomMove(char bot) {
+    public Optional<Field> takeRandomMove(char bot) {
         Optional<Integer> botPos = getBot(this, bot);
         if (!botPos.isPresent())
-            return this;
+            return Optional.empty();
         List<Integer> validMoves = validNeighbours.apply(this, botPos)
             .collect(
                 Collectors.collectingAndThen(Collectors.toList(),
@@ -110,10 +132,11 @@ public class Field {
                 }));
         if (validMoves.isEmpty()) {
             // GAME OVER I HOPE I DRAW
-            return markBotOrCrash.apply(bot, botPos.get() + 1);
+            markX.apply(botPos.get());
+            return Optional.empty();
         } // else
         markX.apply(botPos.get());
-        return markBotOrCrash.apply(bot, validMoves.get(0));
+        return Optional.of(markBotOrCrash.apply(bot, validMoves.get(0)));
     }
 
     public static Optional<Integer> getBot(Field f, char bot) {

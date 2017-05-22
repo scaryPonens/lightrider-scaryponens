@@ -2,8 +2,7 @@ package com.scaryponens.monads;
 
 import com.scaryponens.Game.Field;
 
-import java.util.List;
-import java.util.Random;
+import java.util.Optional;
 import java.util.function.Function;
 
 /**
@@ -11,25 +10,55 @@ import java.util.function.Function;
  */
 public class GameState {
 
-    private Function<Field, Pair<Field,Field>> runState;
+    private boolean IS_OVER = false;
 
-    public GameState(Function<Field, Pair<Field, Field>> runState) {
+    private Function<Field, Pair<Optional<Field>,Field>> runState;
+
+    private Pair<Optional<Field>, Field> state;
+
+    private int gameRound = 0;
+
+    public GameState(Function<Field, Pair<Optional<Field>, Field>> runState) {
         this.runState = runState;
     }
 
-    public Pair<Field,Field> runState(Field state) {
-        return this.runState.apply(state);
+    public Pair<Optional<Field>,Field> runState(Field state) {
+        gameRound++;
+        this.state = this.runState.apply(state);
+        if (!this.state._1.isPresent()) {
+            setGameOver(true);
+        }
+        return this.state;
     }
 
-    public static GameState of(Function<Field, Pair<Field,Field>> runState) {
+    public static GameState of(Function<Field, Pair<Optional<Field>,Field>> runState) {
         return new GameState(runState);
     }
 
-    public GameState flatMap(Function<Field, Pair<Field,Field>> famb) {
-        return new GameState(f -> {
-            Pair<Field,Field> next = this.runState(f);
-            GameState res = GameState.of(g -> famb.apply(next._2));
-            return res.runState(next._1);
-        });
+    public GameState flatMap(Function<Field, Pair<Optional<Field>,Field>> famb) {
+        if (isOver()) return GameState.gameOver();
+        GameState gs = new GameState(f -> {
+                Pair<Optional<Field>,Field> next = runState(f);
+                GameState res = GameState.of(g -> famb.apply(next._2));
+                return next._1.map(field -> res.runState(field)).orElse(Pair.of(Optional.empty(),next._2));
+            });
+        return gs;
+    }
+
+    public static GameState gameOver() {
+        return GameState.of(null).setGameOver(true);
+    }
+
+    public boolean isOver() {
+        return IS_OVER;
+    }
+
+    public GameState setGameOver(boolean gameOver) {
+        IS_OVER = gameOver;
+        return this;
+    }
+
+    public int getGameRound() {
+        return gameRound;
     }
 }

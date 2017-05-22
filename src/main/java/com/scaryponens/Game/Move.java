@@ -8,7 +8,7 @@ public class Move {
     public static BiFunction<Field,Integer,Boolean> isLeftEdge= (field, pos)->
             pos % field.getWidth() == 0;
     public static BiFunction<Field,Integer,Boolean> isRightEdge= (field, pos) ->
-            pos == field.getWidth() - 1;
+            pos % field.getWidth() == field.getWidth() - 1;
     public static BiFunction<Field,Integer,Boolean> isTopEdge= (field, pos) ->
             pos < field.getWidth();
     public static BiFunction<Field,Integer,Boolean> isBottomEdge= (field, pos) ->

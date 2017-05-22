@@ -17,9 +17,10 @@ import static org.junit.Assert.*;
  */
 public class FieldTest {
 
+    private Field f = Field.of(16, 16, '0', '1', Field.genStartingField.apply(16l*16l));
+
     @Test
     public void testMoveBot() {
-        Field f = Field.of(16, 16, '0', '1', Field.genStartingField.apply(16l*16l));
         f.markBotOrCrash.apply(f.getBot1Id(),16);
         f.markX.apply(2);
         f.markX.apply(18);
@@ -29,11 +30,17 @@ public class FieldTest {
         f.showField();
         Stream<Integer> moves = Field.validNeighbours.apply(f,Optional.of(16));
         System.out.println(moves);
-        assertThat(moves.count(), is(2));
+        assertThat(moves.count(), is(2l));
     }
 
     @Test
-    public void testMeasureMaxDistance() {
-
+    public void testRightEdge() {
+        assertThat(Move.isRightEdge.apply(f, 15), is(true));
+        assertThat(Move.isRightEdge.apply(f, 31), is(true));
+        assertThat(Move.isRightEdge.apply(f, 47), is(true));
+        assertThat(Move.isRightEdge.apply(f, 63), is(true));
+        assertThat(Move.isRightEdge.apply(f, 79), is(true));
+        assertThat(Move.isRightEdge.apply(f, 95), is(true));
+        assertThat(Move.isRightEdge.apply(f, 111), is(true));
     }
 }
