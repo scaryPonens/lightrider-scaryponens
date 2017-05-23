@@ -23,8 +23,8 @@ public class RandomStateTest {
             Field field, init = Field.of(16, 16, '0', '1', Field.genStartingField.apply(16l*16l));
             init.markBotOrCrash.apply('0', 0);
             init.markBotOrCrash.apply('1', 15);
-            GameState gs = moveBots('0', '1').apply(init);
-            field = gs.runState(init)._2;
+            GameState gs = moveBots('1', '0').apply(init);
+            field = gs.runState(init)._3;
             Stack<Field> fields = playGame(gs, field, new Stack<>());
             return Tuple3.of(gs.getGameRound(), gs, fields);
         })
@@ -36,6 +36,9 @@ public class RandomStateTest {
 
         GameState gs = games.get(0)._2;
         Stack<Field> fields = games.get(0)._3;
+
+        System.out.println(String.format("# of moves: %d \n%s", gs.getMoves().size(), gs.getMoves()));
+
 
         if (gs.isOver())
             System.out.println("Game is over!");
@@ -50,15 +53,24 @@ public class RandomStateTest {
 
     public static Function<Field,GameState> moveBots(char bot1, char bot2) {
         return field ->
-                GameState.of(f -> Pair.of(f.takeRandomMove(bot1), field))
-                .flatMap(f -> Pair.of(f.takeRandomMove(bot2), field));
+            GameState.of(f -> {
+                Optional<Integer> botPos = Field.getBot(f,bot1);
+                Pair<Integer,Optional<Field>> next = f.takeRandomMove(bot1);
+                String move = botPos.map(pos -> f.positionToCommand(pos, next._1)).orElse("up");
+                return Tuple3.of(move, next._2, field);
+            }).flatMap(f -> {
+                Optional<Integer> botPos = Field.getBot(f,bot2);
+                Pair<Integer,Optional<Field>> next = f.takeRandomMove(bot2);
+                String move = botPos.map(pos -> f.positionToCommand(pos, next._1)).orElse("up");
+                return Tuple3.of(move, next._2, field);
+            });
     }
 
     public static Stack<Field> playGame(GameState gs, Field f, Stack<Field> fields) {
         if (gs.isOver())
             return fields;
         else {
-            Field next = gs.runState(f)._2;
+            Field next = gs.runState(f)._3;
             fields.push(next);
             return playGame(gs, next, fields);
         }
