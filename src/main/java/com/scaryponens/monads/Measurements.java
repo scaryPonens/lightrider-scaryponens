@@ -46,8 +46,6 @@ public class Measurements {
                 stack[i - n] = '*'; // crash
                 return 0;
             }
-
-
         }).sum();
         return Pair.of("down", d);
     };
