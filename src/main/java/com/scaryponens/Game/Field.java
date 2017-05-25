@@ -2,12 +2,10 @@ package com.scaryponens.Game;
 
 import com.scaryponens.monads.Pair;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -19,8 +17,10 @@ public class Field {
     private char bot1 = '0';
     private char bot2 = '1';
     private Character[] field;
+    private int[] id;
 
-    public Field() {}
+    public Field() {
+    }
 
     public Field(int width, int height, char bot1, char bot2, Character[] field) {
         this.width = width;
@@ -28,6 +28,7 @@ public class Field {
         this.bot1 = bot1;
         this.bot2 = bot2;
         this.field = field;
+        id = IntStream.range(0, width*height).map(i -> i).toArray();
     }
 
     public Field(int width, int height, Character[] field) {
@@ -35,6 +36,31 @@ public class Field {
         this.height = height;
         this.bot2 = otherBot.apply(bot1);
         this.field = field;
+    }
+
+    public BiFunction<Integer,Integer,Boolean> find = (p,q) -> id[p] == id[q];
+
+    public void unite(int p, int q) {
+        int pid = id[p];
+        IntStream.range(0, id.length).parallel()
+                .filter(i -> id[i] == pid)
+                .forEach(i -> id[i] = id[q]);
+    }
+
+    public void applyUnite() {
+        for (int i = 0; i < getHeight(); i++) {
+            int row = i * getHeight();
+            for (int j = 0; j < getWidth(); j++) {
+                int p = row + j;
+                if (field[p] != '.') continue;
+                int right = p + 1;
+                int bottom = p + getWidth();
+                if (j < getWidth() - 1 && field[right] == '.')
+                    unite(p, right);
+                if (i < getHeight() - 1 && field[bottom] == '.')
+                    unite(p, bottom);
+            }
+        }
     }
 
     public static Function<Long, Character[]> genStartingField = (n) ->
@@ -97,6 +123,48 @@ public class Field {
                         .map(f -> f.apply(field))
                         .filter(field.validMove)
                         .map(Optional::get);
+
+    private static Function<Integer,Optional<Integer>> internalQuadCoord = (pos) -> {
+        if (0 <= pos && pos < 4)
+            return Optional.of(0);
+        else if (4 <= pos && pos < 8)
+            return Optional.of(1);
+        else if (8 <= pos && pos < 12)
+            return Optional.of(2);
+        else if (12 <= pos && pos < 16)
+            return Optional.of(3);
+        return Optional.empty();
+    };
+
+    private static Function<Integer,Optional<Integer>> quadCoord = pos -> {
+        if (0 <= pos && pos < 8)
+            return Optional.of(0);
+        else if (4 <= pos && pos < 16)
+            return Optional.of(1);
+        return Optional.empty();
+    };
+
+    public static BiFunction<Field,Integer,Optional<Integer>> internalQuadrant = (field, pos) -> {
+        Optional<Integer> r = internalQuadCoord.apply(pos / field.getHeight());
+        Optional<Integer> c = internalQuadCoord.apply(pos % field.getWidth());
+        if (r.isPresent() && c.isPresent())
+            return Optional.of((r.get() * 4) + c.get());
+        return Optional.empty();
+    };
+
+    public static BiFunction<Field,Integer,Optional<Integer>> quadrant = (field, pos) -> {
+        Optional<Integer> r = quadCoord.apply(pos / field.getHeight());
+        Optional<Integer> c = quadCoord.apply(pos % field.getWidth());
+        if (r.isPresent() && c.isPresent())
+            return Optional.of((r.get() * 2) + c.get());
+        return Optional.empty();
+    };
+
+    public static BiFunction<Field,Integer,OptionalDouble> quadDensity = (field, quad) ->
+        IntStream.range(0, field.getField().length).parallel()
+                .filter(i -> quadrant.apply(field,i).map(q -> q == quad).orElse(false))
+                .map(i -> field.getField()[i] != '.' ? 1 : 0)
+                .average();
 
     public String positionToCommand(int start, int end) {
         int delta = start - end;
